@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Environment
+.env
+venv/
+venv_gpu/
+venv_new/
+
+# Logs
+*.log
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+
+# Calibration artifacts
+artifacts/
+
+# Large binary assets
+static/assets/*.dat
+
+# Build / distribution
+dist/
+build/
+
+# OS / IDE
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.trae/

@@ -1,0 +1,149 @@
+# Application settings
+app:
+  name: "Eternix"
+  version: "2.0.0"
+  host: "0.0.0.0"  # Use 0.0.0.0 to listen on all interfaces
+  # Port is fixed to 5000 (hardcoded in app.py for Socket.IO + CORS consistency)
+  debug: false     # Set to true for development debugging
+  auto_kill_existing_port_process: true  # If true, stop existing listener on port 5000 before start
+
+# Camera settings
+camera:
+  default_mode: "client"     # Options: client/server/disabled
+  frame_rate: 60            # Target frame rate for video capture
+  resolution: [640, 480]     # Camera resolution [width, height]
+  cache_duration: 0.1        # Duration to cache frames (seconds)
+  adaptive_streaming:
+    enabled: true
+    min_fps: 3               # Floor: below 3 FPS, emotion detection becomes unreliable
+    max_fps: 8               # Cap: above 8 FPS adds network overhead with no accuracy gain
+    min_jpeg_quality: 0.55   # Lowest acceptable quality — preserves facial features while saving bandwidth
+    max_jpeg_quality: 0.85   # Diminishing returns above 0.85 for emotion classification
+  face_tracking:
+    enabled: true
+    smoothing_alpha: 0.65    # EMA weight for bounding-box position — 0.65 balances responsiveness vs jitter
+    max_missing_frames: 3    # Frames before tracker assumes face is lost (at ~5 FPS ≈ 0.6s tolerance)
+    reacquire_iou_threshold: 0.05  # Low IoU threshold — after face loss, accept any reasonable re-detection
+    max_center_jump_ratio: 0.45    # Reject detections that jump >45% of frame width (likely a false positive)
+
+# DeepSeek API configuration (the only supported AI chat provider)
+deepseek:
+  # API Key must be set via DEEPSEEK_API_KEY environment variable (see .env)
+  model: "deepseek-chat"    # Model name for chat completions
+  temperature: 0.7           # Adjust for more creative empathy
+  max_tokens: 200            # Limit to keep responses conversational
+
+# Emotion detection configuration
+emotion:
+  detection_interval: 200    # Milliseconds between detection attempts (slightly slower for less distraction)
+  confidence_threshold: 0.7  # Display threshold — only show an emotion label when model is ≥70% sure
+  history_size: 100          # Rolling window for trend analysis; 100 readings ≈ 30-60s of session data
+  analyze_every_n_frames: 1  # 1 = analyze every frame; increase to skip frames on slow hardware
+  low_confidence_threshold: 0.55   # Below this, UI shows "uncertain" hint to user
+  chat_min_confidence: 0.45        # Below this, AI prompt says "not detected" instead of guessing
+  confidence_calibration:
+    enabled: true
+    absolute_weight: 0.2           # 80% relative (top1/top2 ratio) + 20% absolute (top1/sum) — relative
+                                   # is more discriminative but absolute prevents overconfidence on low scores
+    temperature: 0.65              # <1.0 compresses mid-range scores upward — makes 50-70% confidence
+                                   # feel more decisive in the UI without inflating truly low scores
+    min_display_confidence: 0.0
+  data_calibration:
+    enabled: false                 # Enable after generating artifact via scripts/evaluate_emotion_dataset.py
+    artifact_path: "artifacts/emotion_calibration.json"
+  smoothing:
+    alpha: 0.4                     # EMA decay factor — lower = smoother but slower to react. 0.4 chosen
+                                   # to dampen per-frame noise while tracking genuine mood shifts within ~2s
+    confidence_threshold: 0.35     # Ignore readings below this for EMA updates (noise floor)
+    switch_in_frames: 3            # Require 3 consecutive frames of a new emotion before switching label
+                                   # (at ~5 FPS ≈ 0.6s delay). Prevents single-frame flickers
+    switch_out_frames: 4           # Require 4 frames of non-dominant emotion before leaving current label
+                                   # (asymmetric: harder to leave than enter, gives stability)
+    stable_hold_ratio: 0.9         # If dominant EMA score is ≥90% of total, lock the label (very confident)
+    stale_reset_frames: 15         # If no face detected for 15 frames (~3s), reset smoother state
+    min_dominance_margin: 2.0      # Dominant emotion EMA must lead runner-up by ≥2.0 points to trigger switch
+                                   # Prevents oscillation between two close-scoring emotions (e.g., sad/neutral)
+  disgust_guardrails:
+    enabled: true
+    min_disgust_score: 43          # Models over-predict "disgust" on neutral/resting faces (common bias in
+                                   # FER datasets). 43 found empirically: below this, 90%+ are false positives.
+                                   # See scripts/evaluate_emotion_dataset.py for calibration methodology
+    happy_rescue_ratio: 0.82       # If "happy" score is ≥82% of "disgust" score, override to happy.
+                                   # Catches smirks/half-smiles the model misclassifies as disgust
+    second_choice_ratio: 0.90      # If runner-up emotion is ≥90% of disgust score, prefer the runner-up.
+                                   # Conservative threshold — only overrides when the alternative is almost
+                                   # as strong, avoiding false corrections
+
+privacy:
+  require_camera_consent: true
+  camera_notice: "By starting camera, you consent to real-time emotion inference from your video feed."
+
+# GPU emotion inference path (YOLOv8 face detector + HSEmotion classifier)
+gpu_emotion:
+  enabled: true
+  device: "cuda"
+  detector_backend: "yolov8"
+  hsemotion_model: "enet_b2_8"
+  expand_percentage: 15      # Expand detected face crop by 15% — captures forehead/chin context
+                              # that HSEmotion uses for expression classification
+  min_face_confidence: 0.35  # YOLOv8 face detection threshold — 0.35 catches partial/angled faces
+                              # while rejecting most false positives (hands, objects)
+  contempt_maps_to: "neutral" # HSEmotion outputs "contempt" which users find confusing; map to neutral
+  disgust_guardrails:         # Same rationale as emotion.disgust_guardrails above
+    enabled: true
+    min_disgust_score: 43
+    happy_rescue_ratio: 0.82
+    second_choice_ratio: 0.90
+
+# DeepFace specific configuration (including detector backends)
+deepface:
+  # detection_strategy: "accuracy_priority"  # Options: "accuracy_priority", "speed_priority", "balanced"
+  detection_strategy: "balanced"      # Default strategy
+  detector_backends:                 # Default order, primarily for 'accuracy_priority' or if strategy not handled
+    - "retinaface"                   # High accuracy, can be slower
+    - "mtcnn"                        # Good accuracy, moderate speed
+    - "ssd"                          # Good balance of speed and accuracy
+    - "dlib"                         # Good accuracy, often slower than ssd/opencv but can be more robust than opencv
+    - "opencv"                       # Fastest, fallback, typically uses Haar/LBP cascades
+    # Other options: 'yolov8' (if installed and supported by your DeepFace version)
+  align_faces: true                  # Enable face alignment for better emotion recognition accuracy
+  min_face_confidence: 0.7           # Conceptual: Minimum confidence for a detected face (DeepFace's enforce_detection handles this implicitly)
+
+# Image Preprocessing settings for emotion detection enhancement
+image_preprocessing:
+  enabled: true
+  grayscale: false             # DeepFace handles color conversion, but can be enabled if specific grayscale ops are needed first
+  gamma_correction:
+    enabled: true
+    target_brightness: 127
+  clahe:
+    enabled: true
+    clip_limit: 2.0
+    tile_grid_size: [8, 8]
+  sharpen:
+    enabled: false             # Sharpening can sometimes introduce noise; use cautiously
+    kernel_strength: 0.5     # Example: 0.5 for mild sharpening
+  denoise:
+    enabled: false             # Denoising can help with noisy images but might blur features
+    strength: 10             # h value for cv2.fastNlMeansDenoisingColored
+  face_padding_factor: 0.1   # Factor to expand the detected face ROI (e.g., 0.1 for 10% padding)
+
+# Security settings
+security:
+  # JWT Secret is loaded from environment variable JWT_SECRET
+  session_timeout: 3600      # Session timeout in seconds (1 hour)
+  rate_limit: 100            # Maximum requests per minute
+  rate_limit_storage_uri: "memory://"  # Use redis://... in production
+  cookie_secure: false
+  cors_origins:              # Allowed Cross-Origin Resource Sharing origins
+    - "http://localhost:5000"
+    - "http://127.0.0.1:5000"
+    - "http://192.168.1.12:5000"
+
+# Logging configuration
+logging:
+  level: "INFO"              # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  file: "eternix.log"        # Log file name
+  max_size: 10485760         # Maximum log file size (10MB)
+  backup_count: 5            # Number of backup logs to keep
+  frame_debug_every_n: 30    # Sample frame-level debug logs to avoid log spam

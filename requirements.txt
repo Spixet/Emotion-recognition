@@ -1,0 +1,8 @@
+# Eternix — Full dependencies (CPU + GPU)
+#
+# For lighter installs, choose one:
+#   pip install -r requirements-cpu.txt   (DeepFace + TensorFlow, no GPU needed)
+#   pip install -r requirements-gpu.txt   (adds HSEmotion + PyTorch for GPU inference)
+#
+# This file installs everything:
+-r requirements-gpu.txt

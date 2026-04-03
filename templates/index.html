@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eternix | Emotion Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='eternix-20260305') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="ambient-glow ambient-glow-left"></div>
+    <div class="ambient-glow ambient-glow-right"></div>
+
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand-block">
+                <p class="eyebrow">Real-time Emotion Inference + Companion Chat</p>
+                <h1>Eternix</h1>
+            </div>
+            <div class="status-strip">
+                <div class="status-chip">
+                    <span>Socket</span>
+                    <strong id="socketState">Connecting</strong>
+                </div>
+                <div class="status-chip">
+                    <span>Backend</span>
+                    <strong id="backendStatus">Checking...</strong>
+                </div>
+                <div class="status-chip">
+                    <span>Readiness</span>
+                    <strong id="readinessStatus">Checking...</strong>
+                </div>
+                <div class="status-chip">
+                    <span>Tracker</span>
+                    <strong id="trackerStatus">Idle</strong>
+                </div>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section class="panel video-panel">
+                <div class="video-container">
+                    <video id="videoElement" autoplay playsinline muted></video>
+                    <canvas id="overlayCanvas"></canvas>
+                    <div id="loadingSpinner" class="spinner-overlay" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Connecting camera...</p>
+                    </div>
+                    <div id="errorMessage" class="error-overlay" style="display: none;">
+                        <p id="errorText">Camera error</p>
+                        <button id="retryButton" type="button">Retry</button>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-actions">
+                        <button id="startStopButton" class="btn btn-primary" type="button">Start Camera</button>
+                        <button id="clearEmotionMemoryButton" class="btn btn-ghost" type="button">Clear Emotion Memory</button>
+                    </div>
+
+                    <div class="toggle-grid">
+                        <label class="toggle-row">
+                            <span class="switch">
+                                <input type="checkbox" id="smoothToggle" checked>
+                                <span class="slider round"></span>
+                            </span>
+                            <span>Smooth Emotion Mode</span>
+                        </label>
+                        <label class="toggle-row consent-container">
+                            <span class="switch">
+                                <input type="checkbox" id="consentCheckbox">
+                                <span class="slider round"></span>
+                            </span>
+                            <span>Consent to Camera Analysis</span>
+                        </label>
+                    </div>
+
+                    <div class="telemetry">
+                        <div class="telemetry-row">
+                            <span>Detected Emotion</span>
+                            <strong id="emotionStatus">N/A</strong>
+                        </div>
+                        <div class="confidence-meter">
+                            <div id="confidenceMeterFill" class="confidence-meter-fill"></div>
+                        </div>
+                        <p id="confidenceNotice" class="confidence-notice"></p>
+                        <p id="streamStatus" class="stream-status">Stream: 5 FPS | JPEG 70%</p>
+                        <p id="privacyNotice" class="privacy-notice">
+                            Camera frames are processed in real time for emotion inference. This is not a medical diagnosis tool.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="chart-wrap">
+                    <canvas id="emotionChart"></canvas>
+                </div>
+            </section>
+
+            <section class="panel chat-panel">
+                <div class="chat-header">
+                    <h2>Talk with Eternix</h2>
+                </div>
+                <div class="chat-container">
+                    <div id="chatbox">
+                        <div class="chat-message ai-message">
+                            <strong>Eternix</strong>
+                            Hi, I am Eternix. Start the camera and I will adapt the conversation to your detected emotional cues.
+                        </div>
+                    </div>
+                    <div id="userInput">
+                        <input type="text" id="messageInput" placeholder="Type your message...">
+                        <button id="sendMessageButton" type="button">Send</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Eternix - Developed by Mohit Pandya</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js', v='eternix-20260305') }}"></script>
+</body>
+</html>

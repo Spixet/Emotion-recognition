@@ -1,0 +1,15 @@
+# Eternix — Full GPU dependencies
+# Uses HSEmotion + PyTorch for faster, higher-accuracy emotion detection
+# Requires CUDA-compatible GPU + CUDA toolkit installed
+# Install: pip install -r requirements-gpu.txt
+
+# Include all CPU dependencies
+-r requirements-cpu.txt
+
+# GPU emotion inference (HSEmotion + PyTorch + YOLOv8 face detection)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+ultralytics>=8.4.0
+hsemotion==0.3.0
+timm==0.9.16
